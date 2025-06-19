@@ -1,0 +1,31 @@
+Package: tn5bias
+Type: Package
+Title: tn5bias: Tn5 sequence bias for ATAC-seq
+Version: 0.99.1
+Date: 2025-06-17
+Authors@R: c(
+    person("Pierre-Luc", "Germain", email="pierre-luc.germain@hest.ethz.ch",
+            role=c("cre","aut"), comment=c(ORCID="0000-0003-3418-4218")))
+Description:
+  This packages computes a per-nucleotide Tn5 sequence bias for any given DNA sequence.
+  The 10-mer bias pre-computed using SELMA on naked human DNA (but should be applicable to other species),
+  and are applied using both strands (Hu et al., 2022).
+  The bias can then be used to correct ATAC coverage signal.
+License: GPL-3
+VignetteBuilder: knitr
+Encoding: UTF-8
+BiocViews: Epigenetics, Coverage
+Depends:
+  R (>= 4.0)
+Imports:
+  Rcpp (>= 1.0.14),
+  RcppParallel (>= 5.1.10.9000),
+  GenomicRanges,
+  IRanges,
+  Rsamtools,
+  Biostrings
+Suggests:
+  BSgenome.Ecoli.NCBI.20080805
+LinkingTo: Rcpp, RcppParallel
+SystemRequirements: GNU make
+RoxygenNote: 7.3.2

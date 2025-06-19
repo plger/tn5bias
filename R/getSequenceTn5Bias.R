@@ -50,6 +50,7 @@ getSequenceTn5Bias <- function(x, bias=NULL, nthreads=1L, complement=FALSE,
     stopifnot(c("kmer","bias") %in% colnames(bias))
   }
   
+  if(length(x)==1) verbose <- FALSE
   if(parOverSeqs <- (length(x) > (totalSize/length(x))/10)){
     if(inherits(nthreads, "BiocParallelParam")){
       bp <- nthreads

@@ -32,7 +32,7 @@ std::unordered_map<std::string, double> build_bias_map(DataFrame bias_table){
   std::unordered_map<std::string, double> bias_map;
   CharacterVector kmers = bias_table["kmer"];
   NumericVector biases = bias_table["bias"];
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < kmers.size(); ++i) {
     bias_map[as<std::string>(kmers[i])] = biases[i];
   }
   return bias_map;
@@ -42,14 +42,31 @@ double get_pos_bias(long unsigned int i, const std::string& genome,
                     const std::unordered_map<std::string, double>& bias_map,
                     long unsigned int genome_length){
   std::string kmer = genome.substr(i - 5, 10);
-  double bias = bias_map.count(kmer) ? bias_map.at(kmer) : 1;
+  double bias1 = bias_map.count(kmer) ? bias_map.at(kmer) : 1;
   if (i < (genome_length-9)) {
     kmer = reverse_complement(genome.substr(i + 4, 10));
     double bias2 = bias_map.count(kmer) ? bias_map.at(kmer) : 1;
-    bias = std::sqrt(bias * bias2);
+    bias1 = std::sqrt(bias1 * bias2);
   }
+  return bias1;
+}
+
+
+// [[Rcpp::export]]
+NumericVector get_seq_tn5_bias(std::string genome, DataFrame bias_table) {
+  
+  long unsigned int genome_length = genome.size();
+  std::unordered_map<std::string, double> bias_map = build_bias_map(bias_table);
+  
+  NumericVector bias(genome_length);
+  
+  for(long unsigned int i = 5; i < (genome_length-5); ++i){
+    bias[i] = get_pos_bias(i, genome, bias_map, genome_length);
+  }
+  
   return bias;
 }
+
 
 // Worker class
 struct BiasWorker : public Worker {
@@ -83,20 +100,5 @@ NumericVector get_seq_tn5_bias_par(std::string genome, DataFrame bias_table) {
   BiasWorker worker(genome, bias_map, genome_length, bias);
   parallelFor(5, genome_length - 5, worker);
   
-  return bias;
-}
-
-// [[Rcpp::export]]
-NumericVector get_seq_tn5_bias(std::string genome, DataFrame bias_table) {
-
-  long unsigned int genome_length = genome.size();
-  std::unordered_map<std::string, double> bias_map = build_bias_map(bias_table);
-
-  NumericVector bias(genome_length);
-  
-  for(long unsigned int i = 5; i < (genome_length-5); ++i){
-    bias[i] = get_pos_bias(i, genome, bias_map, genome_length);
-  }
-
   return bias;
 }

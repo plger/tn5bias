@@ -1,0 +1,152 @@
+---
+title: "Generating per-nucleotide Tn5 bias tracks"
+author: 
+  - name: "Pierre-Luc Germain"
+    affiliation: "D-HEST Institute for Neuroscience, ETH Zürich, Switzerland"
+package: tn5bias
+output:
+  BiocStyle::html_document
+abstract: |
+  This vignette documents the use of the 'tn5bias' package to generate 
+  nucleotide-resolution Tn5 bias signal, which can then be used to correct the
+  bias in ATAC-seq 5' coverage tracks. The Tn5 bias itself, as well as the 
+  correction strategy, is based on the SELMA method (Hu et al., 20222).
+vignette: |
+  %\VignetteIndexEntry{tn5bias}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include=FALSE}
+library(BiocStyle)
+```
+
+# Introduction
+
+ATAC-seq (Assay for Transposase-Accessible Chromatin) maps accessible regions of
+the genome through the use of a hyperactive transposase, Tn5, which inserts 
+itself in (accessible regions of) the genome, and in doing so inserts sequencing
+primers on each side of the insertion sites. The resulting fragments can be 
+sequenced, providing an idea of the degree of accessibility of different regions.
+
+However, the Tn5 itself has some weak sequence bias beyond accessibility. Very
+roughly, the bias in a +5/-5 nucleotides range around the 5' end can be 
+visualized in this way:
+
+```{r}
+library(tn5bias)
+data("tn5biasMotif")
+universalmotif::view_motifs(tn5biasMotif, use.type="PWM")
+```
+
+The letters in the positive range are enriched at the given position, while 
+those in the negative range are depleted.
+
+The actual bias is more complicated than that, because the positions are not 
+entirely independent from each other, and both strands (with some shift) are 
+relevant. This is best illustrated in this figure:
+
+```{r echo = FALSE, fig.cap = "Dimeric Tn5 insertion induces cleavage with a shift between strands. Adapted from Hu et al., Nat Comm 2022."}
+knitr::include_graphics(system.file('extdata', 'bias_strands.png', package = 'tn5bias'))
+```
+
+The `tn5bias` package uses bias estimated by SELMA (Hu et al., 2022) for all 
+10-mers, and applies them to both strands of an input DNA sequence to estimate
+a bias for each position. Such a bias profile can then be used to correct 
+ATAC-seq profiles.
+
+Note that correcting such bias is irrelevant for most purposes, and becomes
+especially important for tasks that 1) require nucleotide-resolution 
+accessibility profiles, such as footprint identification, and/or 2) aggregate 
+over a large number of regions with high sequence similarity (e.g. insertion 
+profile around matches of a motif), and can thus amplify small biases.
+
+
+# Estimating Tn5 bias in a given sequence
+
+To estimate nucleotide-resolution bias in a given sequence, the first step is
+to get the per-kmer bias, which can be done as follows:
+
+```{r}
+bias <- getTn5Bias()
+```
+
+The bias was estimated from human naked DNA, but it is highly correlated to bias
+estimated from other genomes or from the mitochodrion (Hu et al., 2022), and 
+should thus be highly generalizable.
+
+Then, we can use this to estimate bias at each position of an input sequence:
+
+```{r}
+# we generate a random sequence:
+set.seed(123)
+sequence <- paste0(sample(c("A","C","G","T"), 50, replace=TRUE), collapse="")
+# we compute the Tn5 bias across the sequence:
+seqbias <- getSequenceTn5Bias(sequence, bias=bias, verbose=FALSE)
+seqbias
+```
+
+The results are stored as an AtomicList, such as a NumericList, with one slot 
+for each input sequence (in this case there is just one). By default, the 
+results are odds ratio (OR), indicating how much more (or less) likely an 
+insertion is. We can best visualize it as log2-enrichment:
+
+```{r}
+plot(log2(seqbias[[1]]), ylab="log2(enrichment)", xlab="Position", type="l")
+```
+
+## Computing Bias over large (sets of) sequences
+
+For very large sequences (e.g. the entire genome), it can be useful to save 
+memory by converting the OR values to log2-enrichment, multiplying by 100, and 
+rounding, thus saving as integers. This can be done automatically using the 
+`asInteger=TRUE` argument.
+
+When computing bias for a genome, you can pass a `FaFile` (from the 
+`r BiocStyle::Biocpkg("Rsamtools")` package) as input, in order not to have to 
+load the entire genome in memory.
+
+Finally, the computed bias for a genome can be saved as a bigwig file directly
+by using `export.bw` from the `r BiocStyle::Biocpkg("rtracklayer")` package.
+
+## Shifted fragments and strand
+
+By default, the functions have a different behavior than the original SELMA 
+method, in that they provide bias for the shifted insertion sites, i.e. after 
+the typical +4/-5 shift that is applied to the fragments. This means that the
+bias is the same for both strands. It is possible, however, to compute bias for
+the 5' end of the unshifted fragments (i.e. as they were aligned) on the 
+positive strand by setting `shift=FALSE`. The same can be done for the negative
+strand by additionally setting `complement=TRUE`:
+
+```{r}
+seqbias_pos <- getSequenceTn5Bias(sequence, bias=bias, verbose=FALSE,
+                                  shift=FALSE)
+seqbias_neg <- getSequenceTn5Bias(sequence, bias=bias, verbose=FALSE,
+                                  shift=FALSE, complement=TRUE)
+# we visualize the two
+plot(log2(seqbias[[1]]), ylab="log2(enrichment)", xlab="Position", type="l",
+     col=2, lty="dashed", lwd=2)
+lines(log2(seqbias_neg[[1]]), col="3")
+legend(x=0,y=3, legend = c("pos","neg"), col = 2:3, lwd=2, lty=c("dashed","solid"))
+```
+
+Note, however that the bias on the negative strand is the same, shifted by 8 nucleotides.
+
+<br/><br/>
+
+# References
+
+Hu, S.S., Liu, L., Li, Q. et al. Intrinsic bias estimation for improved 
+analysis of bulk and single-cell chromatin accessibility profiles using SELMA.
+Nat Commun 13, 5533 (2022). https://doi.org/10.1038/s41467-022-33194-z
+
+<br/><br/>
+
+# Session information {-}
+
+
+```{r}
+sessionInfo()
+```
+

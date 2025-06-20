@@ -10,6 +10,7 @@ getSequenceTn5Bias(
   nthreads = 1L,
   complement = FALSE,
   asInteger = FALSE,
+  shift = TRUE,
   verbose = TRUE
 )
 }
@@ -29,6 +30,12 @@ This is useful to get the bias for the negative strand.}
 \item{asInteger}{Logical; whether to convert the (observed/expected) odds 
 ratio to rounded 100*log2(OR) to ease the memory footprint. Recommended when
 computing genome-wide bias.}
+
+\item{shift}{Logical; whether to shift the bias, so that it represents not the 5'
+ends of (positives) fragments, but the insertion site (midpoint between the
+cleavages sites on each strand). The shifted bias is consistent with the 
+shifting often performed on ATAC-seq data, and is thus enabled by default.
+Note, however, that this is different from the original SELMA methods.}
 
 \item{verbose}{Logical; whether to output progress messages.}
 }

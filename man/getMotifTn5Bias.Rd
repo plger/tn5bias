@@ -20,7 +20,8 @@ getMotifTn5Bias(x, bias = NULL, ...)
 A vector of bias per position.
 }
 \description{
-Returns the per-position Tn5 bias of a DNA motif.
+Returns the per-position Tn5 bias of a DNA motif. Note that this is very 
+slow and doesn't scale well to larger motifs.
 }
 \examples{
 # get an example motif

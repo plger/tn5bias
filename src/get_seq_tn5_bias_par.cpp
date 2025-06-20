@@ -38,7 +38,7 @@ std::unordered_map<std::string, double> build_bias_map(DataFrame bias_table){
   return bias_map;
 }
 
-double get_pos_bias(long unsigned int i, const std::string& genome, 
+double get_pos_bias(std::size_t i, const std::string& genome, 
                     const std::unordered_map<std::string, double>& bias_map,
                     long unsigned int genome_length){
   std::string kmer = genome.substr(i - 5, 10);
@@ -60,7 +60,7 @@ NumericVector get_seq_tn5_bias(std::string genome, DataFrame bias_table) {
   
   NumericVector bias(genome_length);
   
-  for(long unsigned int i = 5; i < (genome_length-5); ++i){
+  for(std::size_t i = 5; i < (genome_length-5); ++i){
     bias[i] = get_pos_bias(i, genome, bias_map, genome_length);
   }
   

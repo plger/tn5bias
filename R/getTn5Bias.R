@@ -39,7 +39,7 @@ getTn5Bias <- function(convert=TRUE, includeNs=TRUE){
            do.call(paste0, as.list(as.data.frame(k2))))
   })
   kmers3 <- lapply(6:10, \(i){
-    k2 <- do.call(expand.grid, lapply(1:(i-1L), \(x) nts))
+    k2 <- do.call(expand.grid, lapply(seq_len(i-1L), \(x) nts))
     paste0(do.call(paste0, as.list(as.data.frame(k2))),
            paste0(rep("N",11-i), collapse=""))
   })

@@ -24,8 +24,9 @@ Returns the per-position Tn5 bias of a DNA motif. Note that this is very
 slow and doesn't scale well to larger motifs.
 }
 \examples{
-# get an example motif
-jaspar <- universalmotif::read_jaspar(system.file("extdata", "jaspar.txt",
-                                                  package="universalmotif"))
-getMotifTn5Bias(jaspar[[1]])
+# generate a dummy motif example
+mo <- matrix(c(0,0,0,100,100,0,0,0,0,60,40,0,0,100,0,0,0,0,100,0,0,50,50,0),
+             nrow=4)
+row.names(mo) <- c("A","C","G","T")
+getMotifTn5Bias(mo)
 }

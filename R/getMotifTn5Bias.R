@@ -17,18 +17,22 @@
 #' @importFrom matrixStats rowProds
 #' @importFrom universalmotif convert_motifs 
 #' @examples
-#' # get an example motif
-#' jaspar <- universalmotif::read_jaspar(system.file("extdata", "jaspar.txt",
-#'                                                   package="universalmotif"))
-#' getMotifTn5Bias(jaspar[[1]])
+#' # generate a dummy motif example
+#' mo <- matrix(c(0,0,0,100,100,0,0,0,0,60,40,0,0,100,0,0,0,0,100,0,0,50,50,0),
+#'              nrow=4)
+#' row.names(mo) <- c("A","C","G","T")
+#' getMotifTn5Bias(mo)
 getMotifTn5Bias <- function(x, bias=NULL, ...){
   x <- convert_motifs(x)@motif
   if(is.null(bias)) bias <- getTn5Bias()
   x <- t(t(x)/colSums(x))
-  choices <- lapply(seq_len(ncol(x)), \(i) row.names(x)[which(x[,i]>=0.1)] )
+  choices <- lapply(seq_len(ncol(x)), function(i){
+    factor(row.names(x)[which(x[,i] >= 0.1)], row.names(x))
+  })
   kmers <- do.call(expand.grid, choices)
-  prob <- vapply(seq_len(ncol(kmers)), FUN=\(i) x[as.integer(kmers[,i])],
-                 FUN.VALUE=numeric(nrow(kmers)))
+  prob <- vapply(seq_len(ncol(kmers)), FUN = function(i){
+    x[as.integer(kmers[, i]),i]
+  }, FUN.VALUE = numeric(nrow(kmers)))
   prob <- matrixStats::rowProds(prob)
   b <- getSequenceTn5Bias(DNAStringSet(do.call(paste0, kmers)), ...)
   b <- matrix(unlist(b), nrow=length(b))

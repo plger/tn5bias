@@ -1,5 +1,7 @@
 # tn5bias : Computing Tn5 bias across sequences for ATAC-seq correction
 
+** Very much under development, do not use! **
+
 ATAC-seq (Assay for Transposase-Accessible Chromatin) maps accessible regions of
 the genome through the use of a hyperactive transposase, Tn5, which inserts 
 itself in (accessible regions of) the genome, and in doing so inserts sequencing

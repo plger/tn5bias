@@ -10,34 +10,24 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// get_seq_tn5_bias
-NumericVector get_seq_tn5_bias(std::string genome, DataFrame bias_table);
-RcppExport SEXP _tn5bias_get_seq_tn5_bias(SEXP genomeSEXP, SEXP bias_tableSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::string >::type genome(genomeSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type bias_table(bias_tableSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_seq_tn5_bias(genome, bias_table));
-    return rcpp_result_gen;
-END_RCPP
-}
 // get_seq_tn5_bias_par
-NumericVector get_seq_tn5_bias_par(std::string genome, DataFrame bias_table);
-RcppExport SEXP _tn5bias_get_seq_tn5_bias_par(SEXP genomeSEXP, SEXP bias_tableSEXP) {
+NumericVector get_seq_tn5_bias_par(std::string genome, NumericVector bias_vec, IntegerVector rc_map, bool shift, bool complement);
+RcppExport SEXP _tn5bias_get_seq_tn5_bias_par(SEXP genomeSEXP, SEXP bias_vecSEXP, SEXP rc_mapSEXP, SEXP shiftSEXP, SEXP complementSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type genome(genomeSEXP);
-    Rcpp::traits::input_parameter< DataFrame >::type bias_table(bias_tableSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_seq_tn5_bias_par(genome, bias_table));
+    Rcpp::traits::input_parameter< NumericVector >::type bias_vec(bias_vecSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type rc_map(rc_mapSEXP);
+    Rcpp::traits::input_parameter< bool >::type shift(shiftSEXP);
+    Rcpp::traits::input_parameter< bool >::type complement(complementSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_seq_tn5_bias_par(genome, bias_vec, rc_map, shift, complement));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_tn5bias_get_seq_tn5_bias", (DL_FUNC) &_tn5bias_get_seq_tn5_bias, 2},
-    {"_tn5bias_get_seq_tn5_bias_par", (DL_FUNC) &_tn5bias_get_seq_tn5_bias_par, 2},
+    {"_tn5bias_get_seq_tn5_bias_par", (DL_FUNC) &_tn5bias_get_seq_tn5_bias_par, 5},
     {NULL, NULL, 0}
 };
 

@@ -6,11 +6,12 @@ author:
 package: tn5bias
 output:
   BiocStyle::html_document
+bibliography: ../inst/REFERENCES.bib
 abstract: |
   This vignette documents the use of the 'tn5bias' package to generate 
   nucleotide-resolution Tn5 bias signal, which can then be used to correct the
-  bias in ATAC-seq 5' coverage tracks. The Tn5 bias itself, as well as the 
-  correction strategy, is based on the SELMA method (Hu et al., 20222).
+  bias in ATAC-seq coverage tracks. The Tn5 bias itself, as well as the 
+  correction strategy, is based on the SELMA method (Hu et al., 2022).
 vignette: |
   %\VignetteIndexEntry{tn5bias}
   %\VignetteEngine{knitr::rmarkdown}
@@ -27,7 +28,8 @@ ATAC-seq (Assay for Transposase-Accessible Chromatin) maps accessible regions of
 the genome through the use of a hyperactive transposase, Tn5, which inserts 
 itself in (accessible regions of) the genome, and in doing so inserts sequencing
 primers on each side of the insertion sites. The resulting fragments can be 
-sequenced, providing an idea of the degree of accessibility of different regions.
+sequenced, providing an idea of the degree of accessibility of different 
+regions.
 
 However, the Tn5 itself has some weak sequence bias beyond accessibility. Very
 roughly, the bias in a +5/-5 nucleotides range around the 5' end can be 
@@ -44,20 +46,21 @@ those in the negative range are depleted.
 
 The actual bias is more complicated than that, because the positions are not 
 entirely independent from each other, and both strands (with some shift) are 
-relevant. This is best illustrated in this figure:
+relevant. This is best illustrated in this figure from [@hu2022selma]:
 
 ```{r echo = FALSE, fig.cap = "Dimeric Tn5 insertion induces cleavage with a shift between strands. Adapted from Hu et al., Nat Comm 2022."}
 knitr::include_graphics(system.file('extdata', 'bias_strands.png', package = 'tn5bias'))
 ```
 
-The `tn5bias` package uses bias estimated by SELMA (Hu et al., 2022) for all 
+The `tn5bias` package uses bias estimated by SELMA [@hu2022selma] for all 
 10-mers, and applies them to both strands of an input DNA sequence to estimate
 a bias for each position. Such a bias profile can then be used to correct 
 ATAC-seq profiles.
 
-Note that correcting such bias is irrelevant for most purposes, and becomes
-especially important for tasks that 1) require nucleotide-resolution 
-accessibility profiles, such as footprint identification, and/or 2) aggregate 
+Note that correcting such bias is irrelevant for many purposes (such as 
+computing differential accessibility across samples), and becomes especially 
+important for tasks that 1) require nucleotide-resolution accessibility 
+profiles, such as footprint identification, and/or 2) aggregate 
 over a large number of regions with high sequence similarity (e.g. insertion 
 profile around matches of a motif), and can thus amplify small biases.
 
@@ -72,7 +75,7 @@ bias <- getTn5Bias()
 ```
 
 The bias was estimated from human naked DNA, but it is highly correlated to bias
-estimated from other genomes or from the mitochodrion (Hu et al., 2022), and 
+estimated from other genomes or from the mitochodrion [@hu2022selma], and 
 should thus be highly generalizable.
 
 Then, we can use this to estimate bias at each position of an input sequence:
@@ -107,7 +110,7 @@ When computing bias for a genome, you can pass a `FaFile` (from the
 load the entire genome in memory.
 
 Finally, the computed bias for a genome can be saved as a bigwig file directly
-by using `export.bw` from the `r BiocStyle::Biocpkg("rtracklayer")` package.
+by using `export.bw()` from the `r BiocStyle::Biocpkg("rtracklayer")` package.
 
 ## Shifted fragments and strand
 
@@ -133,20 +136,66 @@ legend(x=0,y=3, legend = c("pos","neg"), col = 2:3, lwd=2, lty=c("dashed","solid
 
 Note, however that the bias on the negative strand is the same, shifted by 8 nucleotides.
 
-<br/><br/>
+## Adapting the bias strength to a sample
 
-# References
+The kmer bias depends on the enzyme, and can therefore be assumed to be the same
+across samples/experiments. The strength of the bias, however, may
+vary [@wang2026]. The bias can be amplified or attenuated by a factor `k` (i.e.
+using `bias^k`) that is estimated from the data by the `estimateBiasScale()` 
+function. The estimation requires the (shifted) insertion counts
+per position, and the corresponding bias computed with `scale=1`. 
+Mitochondrial reads, if sufficiently abundant, are ideal for this purpose as 
+they are dominated by the bias , if they are sufficiently
+numerous (`seqs="chrM"`); otherwise any sequences can be used, 
+as the windows used are sub-sampled across the range of bias. 
 
-Hu, S.S., Liu, L., Li, Q. et al. Intrinsic bias estimation for improved 
-analysis of bulk and single-cell chromatin accessibility profiles using SELMA.
-Nat Commun 13, 5533 (2022). https://doi.org/10.1038/s41467-022-33194-z
-
-<br/><br/>
-
-# Session information {-}
-
-
-```{r}
-sessionInfo()
+```{r, eval=FALSE}
+# ins: a list (or RleList) of shifted insertion counts per position, 
+# named by sequence
+b <- getSequenceTn5Bias(genomeFaFile, asInteger=TRUE)
+est <- estimateBiasScale(ins, b, seqs="chrM")
+est$scale
+# the bias for the sample is then obtained by scaling the pre-computed bias 
+# (much faster than re-computing it from the sequence):
+b2 <- scaleBias(b, est$scale)
 ```
 
+Applying this to naked DNA, we typically find a scale of ~1.5-1.6, i.e. the 
+SELMA weights under-estimate the strength of the bias in the data.
+
+<br/><br/>
+
+## Aggregate profiles around regions, with and without bias correction
+
+A typical use of the bias is to correct the aggregate cut profile around a set
+of regions, such as motif matches. This is done by `insertionProfiles`, which
+reads the cut sites (5' ends of reads) of one or several samples (BAM or 
+tabix-indexed fragment files), computes the bias of each strand for each region
+only once, and returns the observed and bias-corrected aggregate profiles of
+each strand and sample. Strands are reported relative to the orientation of
+the regions.
+
+```{r, eval=FALSE}
+# `motifMatches` is a GRanges (with strand) of motif matches
+p <- insertionProfiles(motifMatches, 
+                       samples=c(ctrl="ctrl.bam", treated="treated.bam"),
+                       genome=BSgenome.Hsapiens.UCSC.hg38::Hsapiens, flank=100,
+                       scale=c(ctrl=1.5, treated=1.2))
+matplot(p$positions, p$corrected[,,"ctrl"], type="l")
+```
+
+<br/><br/>
+
+
+# Appendix
+
+## References
+
+::: {#refs}
+:::
+
+## Session info {-}
+
+```{r sessionInfo, echo=FALSE}
+sessionInfo()
+```

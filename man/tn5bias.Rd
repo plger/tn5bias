@@ -8,7 +8,7 @@
 An object of class \code{integer} of length 1746944.
 }
 \usage{
-tn5bias
+data(tn5bias)
 }
 \description{
 Raw Tn5 bias per 10-mers obtained using SELMA (Hu et al. 2022),

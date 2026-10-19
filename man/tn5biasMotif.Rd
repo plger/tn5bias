@@ -8,7 +8,7 @@
 An object of class \code{matrix} (inherits from \code{array}) with 4 rows and 10 columns.
 }
 \usage{
-tn5biasMotif
+data(tn5biasMotif)
 }
 \description{
 A motif summary of the Tn5 bias, summarized from the kmer-level bias

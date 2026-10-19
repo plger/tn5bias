@@ -4,15 +4,12 @@
 \alias{getTn5Bias}
 \title{getTn5Bias}
 \usage{
-getTn5Bias(convert = TRUE, includeNs = TRUE)
+getTn5Bias(convert = TRUE)
 }
 \arguments{
 \item{convert}{Logical; whether to convert into an (observed/expected) odds 
 ratio (default TRUE). If FALSE, the bias values as stored, i.e. rounded, 
 100*log2(OR) to ease the memory footprint.}
-
-\item{includeNs}{Logical; whether to include kmers with leading or trailing 
-Ns (default TRUE).}
 }
 \value{
 A data.frame with the columns kmer and bias

@@ -11,6 +11,7 @@ getSequenceTn5Bias(
   complement = FALSE,
   asInteger = FALSE,
   shift = TRUE,
+  scale = 1,
   verbose = TRUE
 )
 }
@@ -22,10 +23,13 @@ object, a character vector, or a DNAString or DNAStringSet.}
 'bias'. By default, an (internal) table derived from SELMA will be used 
 (see \link{getTn5Bias}).}
 
-\item{nthreads}{The number of threads to use (default 1). Alternatively,}
+\item{nthreads}{The number of threads to use (default 1). Alternatively, a
+\code{BiocParallelParam} object, in which case parallelization is done
+across sequences.}
 
-\item{complement}{Logical; whether to compute bias for the complement of `x`.
-This is useful to get the bias for the negative strand.}
+\item{complement}{Logical; whether to compute the bias of cuts on the 
+negative strand (i.e. the 5' end of negative-strand reads, reported at 
+their genomic position). Only relevant when `shift=FALSE`.}
 
 \item{asInteger}{Logical; whether to convert the (observed/expected) odds 
 ratio to rounded 100*log2(OR) to ease the memory footprint. Recommended when
@@ -33,9 +37,15 @@ computing genome-wide bias.}
 
 \item{shift}{Logical; whether to shift the bias, so that it represents not the 5'
 ends of (positives) fragments, but the insertion site (midpoint between the
-cleavages sites on each strand). The shifted bias is consistent with the 
+cleavages sites on each strand, i.e. 4 bp after the 5' end of a 
+positive-strand read). The shifted bias is consistent with the 
 shifting often performed on ATAC-seq data, and is thus enabled by default.
-Note, however, that this is different from the original SELMA methods.}
+Note, however, that this is different from the original SELMA methods.
+With `shift=FALSE`, the result is the same as SELMA's.}
+
+\item{scale}{A numeric factor by which to amplify the (log-scale) bias, i.e.
+the bias used is `bias^scale` (default 1). This can be estimated for a given
+sample using \code{\link{estimateBiasScale}}.}
 
 \item{verbose}{Logical; whether to output progress messages.}
 }
@@ -43,7 +53,9 @@ Note, however, that this is different from the original SELMA methods.}
 An AtomicList of bias per position.
 }
 \description{
-getSequenceTn5Bias
+Computes the Tn5 bias at each position of the input sequence(s), following 
+the SELMA method: the bias of a cut is the geometric mean of the bias of the 
+two 10-mers around the two cleavage sites of the Tn5 dimer (9 bp apart).
 }
 \examples{
 fakeSequence <- "NNNNNACGTACGTGCGGGCTATGTCACGTNNNNNNN"

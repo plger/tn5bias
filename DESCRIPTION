@@ -1,16 +1,13 @@
 Package: tn5bias
 Type: Package
-Title: tn5bias: Tn5 sequence bias for ATAC-seq
-Version: 0.99.1
-Date: 2025-06-17
+Title: Tn5 sequence bias correction for ATAC-seq
+Version: 0.99.3
+Date: 2026-10-19
 Authors@R: c(
     person("Pierre-Luc", "Germain", email="pierre-luc.germain@hest.ethz.ch",
             role=c("cre","aut"), comment=c(ORCID="0000-0003-3418-4218")))
 Description:
-  This packages computes a per-nucleotide Tn5 sequence bias for any given DNA sequence.
-  The 10-mer bias pre-computed using SELMA on naked human DNA (but should be applicable to other species),
-  and are applied using both strands (Hu et al., 2022).
-  The bias can then be used to correct ATAC coverage signal.
+  Tn5, the enzyme used in tagmentation-based technologies such as ATAC-seq, has a characteristic sequence bias. This packages computes a per-nucleotide Tn5 sequence bias for given DNA sequences, based on stranded 10-mer bias pre-computed using SELMA (Hu et al., 2022) on naked human DNA (but should be applicable to other species). The bias can then be used to correct ATAC coverage signal.
 License: GPL-3
 VignetteBuilder: knitr
 Encoding: UTF-8
@@ -23,10 +20,22 @@ Imports:
   GenomicRanges,
   IRanges,
   Rsamtools,
-  Biostrings
+  Biostrings,
+  BiocParallel,
+  GenomeInfoDb,
+  GenomicAlignments,
+  S4Vectors,
+  BiocGenerics,
+  methods,
+  stats,
+  utils
 Suggests:
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    universalmotif,
+    knitr,
+    BiocStyle,
+    BSgenome
 LinkingTo: Rcpp, RcppParallel
 SystemRequirements: GNU make
-RoxygenNote: 7.3.2
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0

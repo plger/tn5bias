@@ -37,7 +37,6 @@
 #' @param nBins The number of bias bins across which windows are balanced, and 
 #'   in which the diagnostics are reported.
 #' @param interval The range of scales considered.
-#' @param seed Seed used for the window sampling.
 #'
 #' @return A list with the estimated `scale`, its (model-based, which assumes no
 #'   overdispersion and is thus optimistic) standard error `se`, the number of 
@@ -56,7 +55,7 @@
 #' estimateBiasScale(list(seq1=y), b, minCount=10)$scale
 estimateBiasScale <- function(x, bias, seqs=NULL, windowSize=200L, 
                               minCount=20L, nWindows=5000L, nBins=20L,
-                              interval=c(-1,6), seed=123L){
+                              interval=c(-1,6)){
   stopifnot(length(x)==length(bias), !is.null(names(x)))
   if(is.null(names(bias))) names(bias) <- names(x)
   stopifnot(all(names(x) %in% names(bias)))
@@ -88,7 +87,6 @@ estimateBiasScale <- function(x, bias, seqs=NULL, windowSize=200L,
   bin <- cut(cand$meanBias, unique(quantile(cand$meanBias, 
                                             seq(0,1,length.out=nBins+1))),
              include.lowest=TRUE, labels=FALSE)
-  set.seed(seed)
   perBin <- ceiling(nWindows/max(bin, na.rm=TRUE))
   sel <- unlist(lapply(split(seq_len(nrow(cand)), bin), function(i){
     if(length(i) > perBin) sample(i, perBin) else i

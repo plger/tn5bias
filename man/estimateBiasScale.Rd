@@ -12,8 +12,7 @@ estimateBiasScale(
   minCount = 20L,
   nWindows = 5000L,
   nBins = 20L,
-  interval = c(-1, 6),
-  seed = 123L
+  interval = c(-1, 6)
 )
 }
 \arguments{
@@ -42,8 +41,6 @@ the range of mean bias.}
 in which the diagnostics are reported.}
 
 \item{interval}{The range of scales considered.}
-
-\item{seed}{Seed used for the window sampling.}
 }
 \value{
 A list with the estimated `scale`, its (model-based, which assumes no

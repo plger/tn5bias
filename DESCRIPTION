@@ -1,7 +1,7 @@
 Package: tn5bias
 Type: Package
 Title: Tn5 sequence bias correction for ATAC-seq
-Version: 0.99.3
+Version: 0.99.4
 Date: 2026-10-19
 Authors@R: c(
     person("Pierre-Luc", "Germain", email="pierre-luc.germain@hest.ethz.ch",
@@ -11,7 +11,7 @@ Description:
 License: GPL-3
 VignetteBuilder: knitr
 Encoding: UTF-8
-BiocViews: Epigenetics, Coverage
+biocViews: SequencingData, ATACSeq, Epigenetics, Coverage
 Depends:
   R (>= 4.0)
 Imports:

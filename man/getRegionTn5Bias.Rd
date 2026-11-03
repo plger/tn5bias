@@ -8,8 +8,8 @@ getRegionTn5Bias(
   regions,
   genome,
   scale = 1,
-  method = c("mean", "geometric", "max", "quantile"),
   log2 = FALSE,
+  method = c("mean", "geometric", "max", "quantile"),
   q = 0.98,
   maxNFraction = 0.1,
   borderWidth = NULL,
@@ -26,12 +26,12 @@ fetch the sequences. Sequence names must match those of `regions`.}
 
 \item{scale}{The bias scale (see \code{\link{estimateBiasScale}}).}
 
+\item{log2}{Logical; whether to return the score as log2 rather than as 
+(observed/expected) odds ratio.}
+
 \item{method}{Either "mean" (default; arithmetic mean of the odds ratios), 
 "geometric", "max" (the highest per-position bias in the region) or 
 "quantile" (a trimmed maximum: the `q` quantile of the per-position bias).}
-
-\item{log2}{Logical; whether to return the score as log2 rather than as 
-(observed/expected) odds ratio.}
 
 \item{q}{The quantile(s) used when `method="quantile"` (default 0.98).}
 

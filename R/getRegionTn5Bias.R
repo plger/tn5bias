@@ -56,15 +56,16 @@
 #' Rsamtools::indexFa(f)
 #' regions <- GRanges("chr1", IRanges(c(100,500,1000), width=200))
 #' getRegionTn5Bias(regions, Rsamtools::FaFile(f))
-getRegionTn5Bias <- function(regions, genome, scale=1, 
-                             method=c("mean","geometric","max","quantile"), log2=FALSE, 
+getRegionTn5Bias <- function(regions, genome, scale=1, log2=FALSE, 
+                             method=c("mean","geometric","max","quantile"), 
                              q=0.98, maxNFraction=0.1, borderWidth=NULL, 
                              borderCombine=c("sum","product"), bias=NULL, 
                              verbose=TRUE){
   if(missing(method)) method <- "mean"
   method <- match.arg(method, several.ok=TRUE)
   borderCombine <- match.arg(borderCombine)
-  stopifnot(is.null(borderWidth) || (is.numeric(borderWidth) && length(borderWidth)==1 && borderWidth>=1))
+  stopifnot(is.null(borderWidth) || (is.numeric(borderWidth) && 
+                                      length(borderWidth)==1 && borderWidth>=1))
   stopifnot(is.numeric(q), length(q)>=1, q>=0, q<=1, 
             is.numeric(maxNFraction), length(maxNFraction)==1)
   # one score per column
@@ -114,7 +115,8 @@ getRegionTn5Bias <- function(regions, genome, scale=1,
     bi <- b[[i]][idx]
     valid <- nunk[idx]==0L
     v <- bi[valid]
-    if(nFrac[i] > maxNFraction || length(v)==0L) return(rep(NA_real_, length(cols)))
+    if(nFrac[i] > maxNFraction || length(v)==0L) 
+      return(rep(NA_real_, length(cols)))
     summ <- function(v) unlist(lapply(unique(method), function(m){
       switch(m, mean=log2(mean(v)), geometric=mean(log2(v)), max=log2(max(v)),
              quantile=log2(quantile(v, q, names=FALSE)))
@@ -131,6 +133,7 @@ getRegionTn5Bias <- function(regions, genome, scale=1,
     if(borderCombine=="sum") log2((2^sl + 2^sr)/2) else (sl + sr)/2
   }, numeric(length(cols))))
   if(verbose && any(is.na(out[ok,1]))) 
-    message(sum(is.na(out[ok,1])), " regions were not scored (too many unknown bases).")
+    message(sum(is.na(out[ok,1])),
+            " regions were not scored (too many unknown bases).")
   fin(out)
 }

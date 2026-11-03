@@ -1,7 +1,7 @@
 Package: tn5bias
 Type: Package
 Title: Tn5 sequence bias correction for ATAC-seq
-Version: 0.99.4
+Version: 0.99.5
 Date: 2026-10-19
 Authors@R: c(
     person("Pierre-Luc", "Germain", email="pierre-luc.germain@hest.ethz.ch",

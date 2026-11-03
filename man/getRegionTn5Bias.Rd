@@ -12,6 +12,8 @@ getRegionTn5Bias(
   log2 = FALSE,
   q = 0.98,
   maxNFraction = 0.1,
+  borderWidth = NULL,
+  borderCombine = c("sum", "product"),
   bias = NULL,
   verbose = TRUE
 )
@@ -38,6 +40,20 @@ outside of the sequence) in a region for it to be scored (default 0.1);
 the score of other regions is `NA`. Within scored regions, positions with 
 an unknown base within 9bp (i.e. in either of the two 10-mers on which 
 their bias is based) are ignored, since their bias is not informative.}
+
+\item{borderWidth}{If given, only the first and last `borderWidth` positions
+of each region are considered (separately), instead of the whole region. 
+This is relevant when cuts mostly occur at the borders of the regions 
+(e.g. for the ends of larger fragments around peaks). The summary 
+(`method`) is applied to each of the two border windows, and the two are
+then combined according to `borderCombine`. Regions shorter than twice
+`borderWidth` are not scored.}
+
+\item{borderCombine}{How the scores of the two borders are combined: "sum" 
+(default; arithmetic mean of the odds ratios of the two borders, 
+appropriate when a cut at either border contributes to the count) or 
+"product" (geometric mean, appropriate when both cuts are needed, e.g. for
+fragments spanning the region).}
 
 \item{bias}{An optional 10-mer bias table (see \code{\link{getTn5Bias}}).}
 

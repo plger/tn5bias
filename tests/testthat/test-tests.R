@@ -202,6 +202,26 @@ test_that("scaleBias is equivalent to scaling at computation", {
   expect_equal(scaleBias(c(100L,-50L), 1.5), c(150L,-75L))
 })
 
+test_that("border windows work", {
+  set.seed(9)
+  chr <- paste(sample(c("A","C","G","T"), 3000, replace=TRUE), collapse="")
+  f <- tempfile(fileext=".fa")
+  Biostrings::writeXStringSet(Biostrings::DNAStringSet(c(chrT=chr)), f)
+  Rsamtools::indexFa(f); fa <- Rsamtools::FaFile(f)
+  regs <- GenomicRanges::GRanges("chrT", IRanges::IRanges(1000, width=300))
+  b <- as.numeric(getSequenceTn5Bias(chr, bias=bias, verbose=FALSE)[[1]])
+  L <- b[1000:1004]; R <- b[1295:1299]
+  g <- function(...) getRegionTn5Bias(regs, fa, bias=bias, borderWidth=5, verbose=FALSE, ...)
+  expect_equal(g(method="max"), (max(L)+max(R))/2)
+  expect_equal(g(method="max", borderCombine="product"), sqrt(max(L)*max(R)))
+  expect_equal(g(method="mean"), (mean(L)+mean(R))/2)
+  expect_equal(g(method="max", log2=TRUE), log2((max(L)+max(R))/2))
+  expect_true(is.na(getRegionTn5Bias(regs, fa, bias=bias, borderWidth=200, verbose=FALSE)))
+  # scale applies to the bias before summarizing
+  expect_equal(getRegionTn5Bias(regs, fa, bias=bias, borderWidth=5, method="mean", 
+                                scale=2, verbose=FALSE), (mean(L^2)+mean(R^2))/2)
+})
+
 test_that("duplicated sequence names are handled", {
   x <- Biostrings::DNAStringSet(c(a="ACGTACGTAGCTAGCTAGCTAGCTAGCATCGATCGAT", 
                                   a="TTGACCGATAGCGCGCTATATCGGCGATATCGCGATA"))

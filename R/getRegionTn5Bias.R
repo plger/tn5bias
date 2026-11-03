@@ -22,6 +22,18 @@
 #'   the score of other regions is `NA`. Within scored regions, positions with 
 #'   an unknown base within 9bp (i.e. in either of the two 10-mers on which 
 #'   their bias is based) are ignored, since their bias is not informative.
+#' @param borderWidth If given, only the first and last `borderWidth` positions
+#'   of each region are considered (separately), instead of the whole region. 
+#'   This is relevant when cuts mostly occur at the borders of the regions 
+#'   (e.g. for the ends of larger fragments around peaks). The summary 
+#'   (`method`) is applied to each of the two border windows, and the two are
+#'   then combined according to `borderCombine`. Regions shorter than twice
+#'   `borderWidth` are not scored.
+#' @param borderCombine How the scores of the two borders are combined: "sum" 
+#'   (default; arithmetic mean of the odds ratios of the two borders, 
+#'   appropriate when a cut at either border contributes to the count) or 
+#'   "product" (geometric mean, appropriate when both cuts are needed, e.g. for
+#'   fragments spanning the region).
 #' @param bias An optional 10-mer bias table (see \code{\link{getTn5Bias}}).
 #' @param verbose Logical; whether to print progress messages.
 #'
@@ -46,9 +58,13 @@
 #' getRegionTn5Bias(regions, Rsamtools::FaFile(f))
 getRegionTn5Bias <- function(regions, genome, scale=1, 
                              method=c("mean","geometric","max","quantile"), log2=FALSE, 
-                             q=0.98, maxNFraction=0.1, bias=NULL, verbose=TRUE){
+                             q=0.98, maxNFraction=0.1, borderWidth=NULL, 
+                             borderCombine=c("sum","product"), bias=NULL, 
+                             verbose=TRUE){
   if(missing(method)) method <- "mean"
   method <- match.arg(method, several.ok=TRUE)
+  borderCombine <- match.arg(borderCombine)
+  stopifnot(is.null(borderWidth) || (is.numeric(borderWidth) && length(borderWidth)==1 && borderWidth>=1))
   stopifnot(is.numeric(q), length(q)>=1, q>=0, q<=1, 
             is.numeric(maxNFraction), length(maxNFraction)==1)
   # one score per column
@@ -95,12 +111,24 @@ getRegionTn5Bias <- function(regions, genome, scale=1,
     idx <- seq(off[i], length.out=len[i])
     nFrac[i] <<- (sum(!known[idx]) + (width(regions)[ok][i] - len[i])) /
       width(regions)[ok][i]
-    v <- b[[i]][idx][nunk[idx]==0L]
+    bi <- b[[i]][idx]
+    valid <- nunk[idx]==0L
+    v <- bi[valid]
     if(nFrac[i] > maxNFraction || length(v)==0L) return(rep(NA_real_, length(cols)))
-    unlist(lapply(unique(method), function(m){
+    summ <- function(v) unlist(lapply(unique(method), function(m){
       switch(m, mean=log2(mean(v)), geometric=mean(log2(v)), max=log2(max(v)),
              quantile=log2(quantile(v, q, names=FALSE)))
     }))
+    if(is.null(borderWidth)) return(summ(v))
+    # only the first and last `borderWidth` positions of the region are used
+    w <- as.integer(borderWidth)
+    if(length(idx) < 2L*w) return(rep(NA_real_, length(cols)))
+    vl <- bi[seq_len(w)][valid[seq_len(w)]]
+    vr <- bi[length(idx)-w+seq_len(w)][valid[length(idx)-w+seq_len(w)]]
+    if(length(vl)==0L || length(vr)==0L) return(rep(NA_real_, length(cols)))
+    sl <- summ(vl); sr <- summ(vr)
+    # sum: expected counts add up across borders; product: both cuts are needed
+    if(borderCombine=="sum") log2((2^sl + 2^sr)/2) else (sl + sr)/2
   }, numeric(length(cols))))
   if(verbose && any(is.na(out[ok,1]))) 
     message(sum(is.na(out[ok,1])), " regions were not scored (too many unknown bases).")

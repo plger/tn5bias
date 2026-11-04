@@ -80,7 +80,7 @@ test_that("insertionProfiles works across strands, samples and input types", {
   s1 <- mkcuts(20000); s2 <- mkcuts(5000)
   regs <- GRanges("chrT", IRanges(c(1500, 2500, 3500), width=1), strand="+")
   r <- insertionProfiles(regs, list(a=s1, b=s2), fa, flank=50, 
-                         scale=c(a=1, b=1.5), bias=bias, verbose=FALSE)
+                         scale=c(a=1, b=1.5), bias=bias, melt=FALSE, verbose=FALSE)
   expect_equal(dim(r$raw), c(101, 2, 2))
   expect_equal(dimnames(r$raw)$sample, c("a","b"))
   expect_equal(r$nRegions, 3)
@@ -88,20 +88,20 @@ test_that("insertionProfiles works across strands, samples and input types", {
   tot <- sum(r$raw[,,"a"])
   expect_equal(tot, sum(overlapsAny(s1, resize(regs, 101, fix="center"), ignore.strand=TRUE)))
   # corrected = raw/bias for a single region
-  r1 <- insertionProfiles(regs[1], list(a=s1), fa, flank=50, bias=bias, verbose=FALSE)
+  r1 <- insertionProfiles(regs[1], list(a=s1), fa, flank=50, bias=bias, melt=FALSE, verbose=FALSE)
   bp <- as.numeric(getSequenceTn5Bias(chr, bias=bias, shift=FALSE, verbose=FALSE)[[1]])
   rawp <- r1$raw[,"+","a"]
   expect_equal(unname(r1$corrected[,"+","a"]), unname(rawp/bp[1450:1550]))
   # every region has its own bias (sequence names are duplicated)
-  r3 <- insertionProfiles(regs[3], list(a=s1), fa, flank=50, bias=bias, verbose=FALSE)
+  r3 <- insertionProfiles(regs[3], list(a=s1), fa, flank=50, bias=bias, melt=FALSE, verbose=FALSE)
   expect_equal(unname(r3$corrected[,"+","a"]), 
                unname(r3$raw[,"+","a"]/bp[3450:3550]))
   expect_equal(unname(r$bias[,"+"]), 
                unname(rowMeans(sapply(c(1500,2500,3500), function(p) bp[(p-50):(p+50)]))))
   # negative-strand region: reversed and strand-swapped
-  rneg <- insertionProfiles(regs[1], list(a=s1), fa, flank=50, bias=bias, verbose=FALSE)
+  rneg <- insertionProfiles(regs[1], list(a=s1), fa, flank=50, bias=bias, melt=FALSE, verbose=FALSE)
   regn <- regs[1]; strand(regn) <- "-"
-  rn <- insertionProfiles(regn, list(a=s1), fa, flank=50, bias=bias, verbose=FALSE)
+  rn <- insertionProfiles(regn, list(a=s1), fa, flank=50, bias=bias, melt=FALSE, verbose=FALSE)
   expect_equal(unname(rn$raw[,"+","a"]), rev(unname(rneg$raw[,"-","a"])))
   expect_equal(unname(rn$corrected[,"-","a"]), rev(unname(rneg$corrected[,"+","a"])))
   # fragment file input is equivalent
@@ -114,13 +114,23 @@ test_that("insertionProfiles works across strands, samples and input types", {
   gz <- Rsamtools::bgzip(fr, overwrite=TRUE); Rsamtools::indexTabix(gz, format="bed")
   cuts <- c(GRanges("chrT", IRanges(st, width=1), strand="+"),
             GRanges("chrT", IRanges(en, width=1), strand="-"))
-  ra <- insertionProfiles(regs, list(a=gz), fa, flank=50, bias=bias, verbose=FALSE)
-  rb <- insertionProfiles(regs, list(a=cuts), fa, flank=50, bias=bias, verbose=FALSE)
+  ra <- insertionProfiles(regs, list(a=gz), fa, flank=50, bias=bias, melt=FALSE, verbose=FALSE)
+  rb <- insertionProfiles(regs, list(a=cuts), fa, flank=50, bias=bias, melt=FALSE, verbose=FALSE)
   expect_equal(ra$raw, rb$raw)
   # out-of-bounds regions are dropped
   expect_equal(insertionProfiles(c(regs, GRanges("chrT", IRanges(10, width=1))), 
                                  list(a=cuts), fa, flank=50, bias=bias,
-                                 verbose=FALSE)$nRegions, 3)
+                                 melt=FALSE, verbose=FALSE)$nRegions, 3)
+  # long-format output
+  m <- insertionProfiles(regs, list(a=s1, b=s2), fa, flank=50, 
+                         scale=c(a=1, b=1.5), bias=bias, verbose=FALSE)
+  expect_equal(names(m), c("position","sample","track","strand","value"))
+  expect_equal(levels(m$track), c("raw","bias","corrected"))
+  expect_equal(nrow(m), 101*2*2*2 + 101*2)
+  expect_equal(attr(m, "nRegions"), 3)
+  expect_equal(m$value[m$track=="raw" & m$sample=="a" & m$strand=="+"], 
+               unname(r$raw[,"+","a"]))
+  expect_true(all(is.na(m$sample[m$track=="bias"])))
 })
 
 test_that("getRegionTn5Bias works", {
@@ -228,4 +238,53 @@ test_that("duplicated sequence names are handled", {
   b <- getSequenceTn5Bias(x, bias=bias, verbose=FALSE)
   b2 <- getSequenceTn5Bias(x[2], bias=bias, verbose=FALSE)
   expect_equal(as.numeric(b[[2]]), as.numeric(b2[[1]]))
+})
+
+test_that("estimateBiasScale works from a BAM file", {
+  set.seed(7)
+  chr <- paste(sample(c("A","C","G","T"), 30000, replace=TRUE), collapse="")
+  fa <- tempfile(fileext=".fa"); writeLines(c(">chrT", chr), fa); Rsamtools::indexFa(fa)
+  fa <- Rsamtools::FaFile(fa)
+  b <- getSequenceTn5Bias(chr, verbose=FALSE)[[1]]
+  # insertions drawn from a bias of strength 1.5; reads placed so that the 
+  # shifted insertion is at position i (+ reads start at i-4, - reads end at i+4)
+  w <- as.numeric(b)^1.5
+  ins <- sample(seq_along(w), 60000, replace=TRUE, prob=w)
+  ins <- ins[ins > 40 & ins < 29960]
+  isp <- runif(length(ins)) < 0.5
+  rl <- 30L
+  st <- ifelse(isp, ins-4L, ins+4L-rl+1L)
+  sam <- c("@HD\tVN:1.6\tSO:coordinate", "@SQ\tSN:chrT\tLN:30000",
+           paste(paste0("r", seq_along(st)), ifelse(isp, 0L, 16L), "chrT", st, 60, 
+                 paste0(rl, "M"), "*", 0, 0, strrep("A", rl), strrep("I", rl), 
+                 sep="\t")[order(st)])
+  sf <- tempfile(fileext=".sam"); writeLines(sam, sf)
+  bam <- Rsamtools::asBam(sf, tempfile(), overwrite=TRUE)
+  e <- estimateBiasScale(bam, genome=fa, minCount=10, windowSize=300)
+  expect_lt(abs(e$scale - 1.5), 0.15)
+  # equivalent to list input
+  x <- list(chrT=tabulate(ins, nbins=30000))
+  e2 <- estimateBiasScale(x, list(chrT=b), minCount=10, windowSize=300)
+  expect_equal(e$scale, e2$scale, tolerance=0.05)
+  expect_error(estimateBiasScale(bam, minCount=10), "genome")
+  expect_error(estimateBiasScale(bam, genome=fa, seqs="chrX"), "without reads")
+})
+
+test_that("insertionProfiles estimates the scale when scale=NULL", {
+  set.seed(3)
+  chr <- paste(sample(c("A","C","G","T"), 30000, replace=TRUE), collapse="")
+  fa <- tempfile(fileext=".fa"); writeLines(c(">chrT", chr), fa); Rsamtools::indexFa(fa)
+  fa <- Rsamtools::FaFile(fa)
+  b <- getSequenceTn5Bias(chr, verbose=FALSE)[[1]]
+  ins <- sample(30000, 60000, replace=TRUE, prob=as.numeric(b)^1.5)
+  ins <- ins[ins > 40 & ins < 29960]
+  isp <- runif(length(ins)) < 0.5
+  cuts <- GRanges("chrT", IRanges(ifelse(isp, ins-4L, ins+4L), width=1), 
+                  strand=ifelse(isp, "+", "-"))
+  regs <- GRanges("chrT", IRanges(c(5000, 15000), width=1), strand="+")
+  r <- insertionProfiles(regs, list(a=cuts), fa, flank=50, scale=NULL, melt=FALSE,
+                         scaleArgs=list(minCount=10, windowSize=300), verbose=FALSE)
+  expect_lt(abs(r$scale[["a"]] - 1.5), 0.15)
+  e <- estimateBiasScale(cuts, genome=fa, minCount=10, windowSize=300)
+  expect_equal(r$scale[["a"]], e$scale)
 })

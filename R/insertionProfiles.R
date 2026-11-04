@@ -30,14 +30,31 @@
 #' @param flank The number of nucleotides on each side of the region centers 
 #'   (default 100).
 #' @param scale The bias scale, either a single number or a (named) vector 
-#'   with one value per sample. See \code{\link{estimateBiasScale}}.
+#'   with one value per sample. See \code{\link{estimateBiasScale}}. If 
+#'   `NULL`, the scale of each sample is estimated with 
+#'   \code{\link{estimateBiasScale}} (using the mitochondrial genome if 
+#'   available, otherwise the largest sequence; see `scaleArgs`). Note that 
+#'   this assumes the sample is mostly uniform in accessibility at the scale of 
+#'   the windows used, which is not the case for most chromosomes of ATAC data
+#'   other than chrM, so for non-naked data the estimate should be checked.
 #' @param bias An optional 10-mer bias table (see \code{\link{getTn5Bias}}).
 #' @param minMapq For BAM files, the minimum mapping quality (default 10).
 #' @param barcodes For fragment files, an optional vector of cell barcodes to 
 #'   include. 
+#' @param scaleArgs A list of further arguments passed to 
+#'   \code{\link{estimateBiasScale}} when `scale=NULL` (e.g. `seqs`, 
+#'   `windowSize`, `minCount`).
+#' @param melt Logical; whether to return the profiles as a long-format
+#'   data.frame (default) instead of a list (see Value).
 #' @param verbose Logical; whether to print progress messages.
 #'
-#' @return A list with the following elements:
+#' @return If `melt=TRUE`, a data.frame with columns `position` (relative to the
+#'   region center), `sample`, `track` (raw, bias or corrected), `strand`
+#'   (+ or -, relative to the regions) and `value`. The `bias` track is the
+#'   mean bias across regions (odds ratio, scale 1), which does not depend on
+#'   the sample, hence `sample` is `NA` for it. The number of regions and the scales are
+#'   stored in the `nRegions` and `scale` attributes. Otherwise, a list with the
+#'   following elements:
 #' \describe{
 #'  \item{`raw` and `corrected`}{ Arrays of dimensions positions x strand x 
 #'   sample with the aggregate observed and bias-corrected cut counts.}
@@ -58,11 +75,22 @@
 #' @importFrom utils read.delim
 insertionProfiles <- function(regions, samples, genome, flank=100L, scale=1, 
                               bias=NULL, minMapq=10L, barcodes=NULL, 
-                              verbose=TRUE){
-  stopifnot(is(regions, "GRanges"), length(regions) > 0, is.numeric(scale))
+                              melt=TRUE, scaleArgs=list(), verbose=TRUE){
+  stopifnot(is(regions, "GRanges"), length(regions) > 0, 
+            is.null(scale) || is.numeric(scale))
   flank <- as.integer(flank)
   if(is.null(names(samples))) names(samples) <- 
     if(is.character(samples)) basename(samples) else paste0("sample", seq_along(samples))
+  if(is.null(scale)){
+    scale <- vapply(names(samples), function(s){
+      if(verbose) message("Estimating the bias scale of ", s, "...")
+      do.call(estimateBiasScale, c(list(x=samples[[s]], genome=genome, 
+                                        kmerBias=bias, minMapq=minMapq),
+                                   scaleArgs))$scale
+    }, numeric(1))
+    if(verbose) message("Estimated scale(s): ", 
+                        paste(names(scale), round(scale,3), sep="=", collapse=", "))
+  }
   if(length(scale)==1) scale <- setNames(rep(scale, length(samples)), names(samples))
   if(is.null(names(scale))) names(scale) <- names(samples)
   stopifnot(setequal(names(scale), names(samples)))
@@ -125,9 +153,38 @@ insertionProfiles <- function(regions, samples, genome, flank=100L, scale=1,
       corr[,i,s] <- rowSums(cn[[st]] / b[[st]]^scale[[s]])
     }
   }
-  list(raw=raw, corrected=corr, 
-       bias=cbind("+"=rowMeans(b$plus), "-"=rowMeans(b$minus)),
-       nRegions=nr, scale=scale, positions=pos)
+  res <- list(raw=raw, corrected=corr,
+              bias=cbind("+"=rowMeans(b$plus), "-"=rowMeans(b$minus)),
+              nRegions=nr, scale=scale, positions=pos)
+  if(melt) return(.meltProfiles(res))
+  res
+}
+
+# long-format version of the insertionProfiles output
+.meltProfiles <- function(res){
+  m <- function(a, track){
+    d <- as.data.frame(as.table(a), stringsAsFactors=FALSE, responseName="value")
+    d$position <- as.integer(d$position)
+    d$track <- track
+    d
+  }
+  d <- rbind(m(res$raw, "raw"), m(res$corrected, "corrected"))
+  bb <- res$bias
+  dimnames(bb) <- list(res$positions, colnames(bb))
+  bd <- as.data.frame(as.table(bb), stringsAsFactors=FALSE,
+                      responseName="value")
+  names(bd)[1:2] <- c("position","strand")
+  bd$position <- as.integer(bd$position)
+  bd$sample <- NA_character_
+  bd$track <- "bias"
+  d <- rbind(d, bd[,names(d)])
+  d$track <- factor(d$track, levels=c("raw","bias","corrected"))
+  d$strand <- factor(d$strand, levels=c("+","-"))
+  d <- d[,c("position","sample","track","strand","value")]
+  row.names(d) <- NULL
+  attr(d, "nRegions") <- res$nRegions
+  attr(d, "scale") <- res$scale
+  d
 }
 
 # returns a GRanges of width-1 cut sites (strand = strand of the cut)

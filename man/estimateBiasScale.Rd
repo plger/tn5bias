@@ -6,29 +6,43 @@
 \usage{
 estimateBiasScale(
   x,
-  bias,
+  bias = NULL,
   seqs = NULL,
   windowSize = 200L,
   minCount = 20L,
   nWindows = 5000L,
   nBins = 20L,
-  interval = c(-1, 6)
+  interval = c(-1, 6),
+  genome = NULL,
+  minMapq = 10L,
+  nthreads = 1L,
+  kmerBias = NULL
 )
 }
 \arguments{
-\item{x}{The insertion counts per position, i.e. a named list (or 
+\item{x}{Either the path to an indexed BAM file (requires `genome`; the 5' 
+ends of all reads are used, so it works for single- as well as paired-end 
+data), a tabix-indexed fragment file, a \code{GRanges} of width-1 cut 
+sites (see \code{\link{insertionProfiles}}; for these, `seqs` should 
+preferably be given), or the insertion counts per position, i.e. a named list (or 
 \code{IntegerList}, \code{RleList}) with one vector per sequence. 
 These should be the (shifted) insertions, matching the default 
 (`shift=TRUE`) output of \code{\link{getSequenceTn5Bias}}, i.e. +4 for 
 positive-strand reads and -4 for negative-strand reads, using the 1-based 
-positions of read starts and ends respectively.}
+positions of read starts and ends respectively (this is done 
+automatically for BAM input).}
 
 \item{bias}{The bias, as returned by \code{\link{getSequenceTn5Bias}} 
 (computed with `scale=1`) for the same sequences. Odds ratios are expected 
-unless the values are integers (`asInteger=TRUE`).}
+unless the values are integers (`asInteger=TRUE`). Ignored (computed from 
+`genome`) for BAM input.}
 
 \item{seqs}{Optional names of the sequences to use (e.g. "chrM" or "MT"). 
-By default all are used.}
+By default all are used for list input. For BAM input, the mitochondrial 
+sequence is used if present (with enough reads), otherwise the sequence 
+with the most reads (to limit memory usage, the bias and counts are 
+handled for the selected sequences only, so consider specifying a subset 
+in the case of large genomes).}
 
 \item{windowSize}{The window size (default 200).}
 
@@ -41,6 +55,17 @@ the range of mean bias.}
 in which the diagnostics are reported.}
 
 \item{interval}{The range of scales considered.}
+
+\item{genome}{A \link[Rsamtools]{FaFile} or \code{BSgenome}; required for BAM 
+input, from which the sequences (and thereby the bias) are obtained. 
+Sequence names must match those of the BAM file.}
+
+\item{minMapq}{For BAM input, the minimum mapping quality (default 10).}
+
+\item{nthreads}{The number of threads used to compute the bias (BAM input).}
+
+\item{kmerBias}{An optional 10-mer bias table (see \code{\link{getTn5Bias}}),
+used to compute the bias from `genome` (BAM/fragment file input).}
 }
 \value{
 A list with the estimated `scale`, its (model-based, which assumes no

@@ -13,6 +13,8 @@ insertionProfiles(
   bias = NULL,
   minMapq = 10L,
   barcodes = NULL,
+  melt = TRUE,
+  scaleArgs = list(),
   verbose = TRUE
 )
 }
@@ -35,7 +37,13 @@ fetch the sequences. Sequence names must match those of `regions`.}
 (default 100).}
 
 \item{scale}{The bias scale, either a single number or a (named) vector 
-with one value per sample. See \code{\link{estimateBiasScale}}.}
+with one value per sample. See \code{\link{estimateBiasScale}}. If 
+`NULL`, the scale of each sample is estimated with 
+\code{\link{estimateBiasScale}} (using the mitochondrial genome if 
+available, otherwise the largest sequence; see `scaleArgs`). Note that 
+this assumes the sample is mostly uniform in accessibility at the scale of 
+the windows used, which is not the case for most chromosomes of ATAC data
+other than chrM, so for non-naked data the estimate should be checked.}
 
 \item{bias}{An optional 10-mer bias table (see \code{\link{getTn5Bias}}).}
 
@@ -44,10 +52,23 @@ with one value per sample. See \code{\link{estimateBiasScale}}.}
 \item{barcodes}{For fragment files, an optional vector of cell barcodes to 
 include.}
 
+\item{melt}{Logical; whether to return the profiles as a long-format
+data.frame (default) instead of a list (see Value).}
+
+\item{scaleArgs}{A list of further arguments passed to 
+\code{\link{estimateBiasScale}} when `scale=NULL` (e.g. `seqs`, 
+`windowSize`, `minCount`).}
+
 \item{verbose}{Logical; whether to print progress messages.}
 }
 \value{
-A list with the following elements:
+If `melt=TRUE`, a data.frame with columns `position` (relative to the
+  region center), `sample`, `track` (raw, bias or corrected), `strand`
+  (+ or -, relative to the regions) and `value`. The `bias` track is the
+  mean bias across regions (odds ratio, scale 1), which does not depend on
+  the sample, hence `sample` is `NA` for it. The number of regions and the scales are
+  stored in the `nRegions` and `scale` attributes. Otherwise, a list with the
+  following elements:
 \describe{
  \item{`raw` and `corrected`}{ Arrays of dimensions positions x strand x 
   sample with the aggregate observed and bias-corrected cut counts.}

@@ -37,13 +37,12 @@ visualized in this way:
 
 ```{r}
 library(tn5bias)
+library(ggplot2)
 data("tn5biasMotif")
-universalmotif::view_motifs(tn5biasMotif, use.type="PWM")
+universalmotif::view_motifs(tn5biasMotif, use.type="PPM", text.size = 11) +
+  scale_x_continuous(breaks=1:10, labels = c(-5:-1, 1:5)) +
+  labs(x="Position relative to the cut site", y="Probability")
 ```
-
-The letters in the positive range are enriched at the given position, while 
-those in the negative range are depleted.
-
 The actual bias is more complicated than that, because the positions are not 
 entirely independent from each other, and both strands (with some shift) are 
 relevant. This is best illustrated in this figure from [@hu2022selma]:
@@ -145,9 +144,9 @@ using `bias^k`) that is estimated from the data by the `estimateBiasScale()`
 function. The estimation requires the (shifted) insertion counts
 per position, and the corresponding bias computed with `scale=1`. 
 Mitochondrial reads, if sufficiently abundant, are ideal for this purpose as 
-they are dominated by the bias , if they are sufficiently
-numerous (`seqs="chrM"`); otherwise any sequences can be used, 
-as the windows used are sub-sampled across the range of bias. 
+they are dominated by the bias. Use `seqs="chrM"` for this purpose, otherwise 
+any sequences can be used, as the windows used are sub-sampled across the range 
+of bias. 
 
 ```{r, eval=FALSE}
 # ins: a list (or RleList) of shifted insertion counts per position, 
@@ -160,8 +159,6 @@ est$scale
 b2 <- scaleBias(b, est$scale)
 ```
 
-Applying this to naked DNA, we typically find a scale of ~1.5-1.6, i.e. the 
-SELMA weights under-estimate the strength of the bias in the data.
 
 <br/><br/>
 
@@ -169,20 +166,31 @@ SELMA weights under-estimate the strength of the bias in the data.
 
 A typical use of the bias is to correct the aggregate cut profile around a set
 of regions, such as motif matches. This is done by `insertionProfiles`, which
-reads the cut sites (5' ends of reads) of one or several samples (BAM or 
+reads the cut sites (5' ends of reads) of one or more samples (BAM or 
 tabix-indexed fragment files), computes the bias of each strand for each region
 only once, and returns the observed and bias-corrected aggregate profiles of
-each strand and sample. Strands are reported relative to the orientation of
-the regions.
+each strand and sample.
+
 
 ```{r, eval=FALSE}
-# `motifMatches` is a GRanges (with strand) of motif matches
-p <- insertionProfiles(motifMatches, 
-                       samples=c(ctrl="ctrl.bam", treated="treated.bam"),
-                       genome=BSgenome.Hsapiens.UCSC.hg38::Hsapiens, flank=100,
-                       scale=c(ctrl=1.5, treated=1.2))
-matplot(p$positions, p$corrected[,,"ctrl"], type="l")
+# assuming `motifMatches` is a GRanges (with strand) of motif matches :
+p <- insertionProfiles(motifMatches, samples=c(ctrl="ctrl.bam"), 
+                     genome=BSgenome.Hsapiens.UCSC.hg38, flank=100,
+                     scale=1.5) # set scale=NULL to estimate the bias scale
 ```
+
+Not having real data at hand, we'll load an example profile and plot what an 
+output looks like:
+
+```{r}
+data(exampleInsertionProfile)
+library(ggplot2)
+ggplot(exampleInsertionProfile,
+       aes(position, value, colour=strand)) + geom_line() +
+    facet_wrap(~track, ncol=1, scales="free_y") + theme_bw()
+```
+
+Strands are reported relative to the orientation of the regions.
 
 <br/><br/>
 

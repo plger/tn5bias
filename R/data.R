@@ -15,3 +15,9 @@
 #' system.file('inst/scripts/', 'biasMotif.R', package='tn5bias')
 "tn5biasMotif"
 
+#' @title Example insertion profile & bias
+#' @description
+#' An example stranded insertion profile, raw and bias corrected, around some 
+#' motifs matches.
+"exampleInsertionProfile"
+

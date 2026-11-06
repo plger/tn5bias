@@ -78,10 +78,14 @@ NumericVector get_seq_tn5_bias_par(std::string genome, NumericVector bias_vec,
   
   BiasWorker worker(genome, std_bias, std_rc, shift, complement, output);
   
-  // Boundary safety: the widest window is 17 bases around the position
-  // (shifted: i-4-5 .. i-4+13; minus strand: i-13 .. i+5).
-  const int margin = 18;
-  if (n > 2 * margin) parallelFor(margin, n - margin, worker);
+  // Boundary safety: positions are only computed where all the bases of the 
+  // two 10-mers lie within the sequence (otherwise the bias is left at 1):
+  //  - shifted insertion site i: bases i-9 .. i+9
+  //  - + strand cut at i: bases i-5 .. i+13
+  //  - - strand cut at i: bases i-13 .. i+5
+  int left = shift ? 9 : (complement ? 13 : 5);
+  int right = shift ? 9 : (complement ? 5 : 13);
+  if (n > left + right) parallelFor(left, n - right, worker);
   
   return output;
 }

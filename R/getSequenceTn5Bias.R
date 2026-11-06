@@ -116,11 +116,11 @@ getSequenceTn5Bias <- function(x, bias=NULL, nthreads=1L, complement=FALSE,
     }
     len <- nchar(s_char)
     
-    # padding to handle edges (the widest window is 18 bp)
-    padded_s <- paste0(strrep("N", 20), s_char, strrep("N", 20))
+    # padding to handle edges (the widest flank needed is 13 bp)
+    padded_s <- paste0(strrep("N", 13), s_char, strrep("N", 13))
     seqbias <- get_seq_tn5_bias_par(padded_s, bias_vec, rc_map, shift, 
                                     complement)
-    seqbias <- seqbias[21:(20 + len)]
+    seqbias <- seqbias[14:(13 + len)]
     
     if(asInteger) seqbias <- as.integer(round(100 * log2(seqbias)))
     seqbias

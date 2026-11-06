@@ -34,7 +34,8 @@ Suggests:
     universalmotif,
     knitr,
     BiocStyle,
-    BSgenome
+    BSgenome,
+    ggplot2
 LinkingTo: Rcpp, RcppParallel
 SystemRequirements: GNU make
 Config/testthat/edition: 3

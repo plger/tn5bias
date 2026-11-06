@@ -45,7 +45,7 @@
 #' s <- paste(sample(c("A","C","G","T"), 1000, replace=TRUE), collapse="")
 #' fa <- tempfile(fileext=".fa"); writeLines(c(">chrT", s), fa)
 #' Rsamtools::indexFa(fa)
-#' fr <- GRanges("chrT", IRanges(c(100, 300), c(180, 450)))
+#' fr <- GenomicRanges::GRanges("chrT", IRanges::IRanges(c(100, 300), c(180, 450)))
 #' getFragmentEndBias(fr, Rsamtools::FaFile(fa))
 getFragmentEndBias <- function(fragments, genome, bias=NULL, scale=1,
                                log2=FALSE, chromosomes=NULL, nthreads=1L,

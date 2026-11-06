@@ -8,7 +8,8 @@
 #'   object, a character vector, or a DNAString or DNAStringSet.
 #' @param bias An optional 10-mer bias table, with the columns 'kmer' and 
 #'   'bias'. By default, an (internal) table derived from SELMA will be used 
-#'   (see \link{getTn5Bias}).
+#'   (see \link{getTn5Bias}). When calling the function many times, it is 
+#'   faster to call \code{\link{getTn5Bias}} once and pass the result here.
 #' @param nthreads The number of threads to use (default 1). Alternatively, a
 #'   \code{BiocParallelParam} object, in which case parallelization is done
 #'   across sequences.
@@ -74,14 +75,14 @@ getSequenceTn5Bias <- function(x, bias=NULL, nthreads=1L, complement=FALSE,
     stopifnot(c("kmer","bias") %in% colnames(bias))
   }
   # the C++ code indexes kmers alphabetically
-  bias <- bias[order(bias$kmer), ]
+  bias <- bias[order(bias$kmer, method="radix"), ]
   bias_vec <- bias$bias^scale
   stopifnot(length(bias_vec) == 4^10)
   
-  # Pre-compute RC map once
-  all_kmers <- bias$kmer
-  rc_kmers <- as.character(reverseComplement(DNAStringSet(all_kmers)))
-  rc_map <- match(rc_kmers, all_kmers) - 1L 
+  # the (cached) reverse-complement map, valid for the alphabetical kmers
+  if(!identical(bias$kmer, .sortedKmers()))
+    stop("`bias$kmer` should contain each of the 4^10 10-mers exactly once.")
+  rc_map <- .rcMap()
   
   if(complement && shift){
     if(verbose) message("The use of shift=TRUE and complement=TRUE together ",
@@ -128,4 +129,34 @@ getSequenceTn5Bias <- function(x, bias=NULL, nthreads=1L, complement=FALSE,
   names(results) <- names(x)
   
   as(results, ifelse(asInteger, "IntegerList", "NumericList"))
+}
+
+# package-level cache of objects that only depend on the kmer ordering
+.cache <- new.env(parent=emptyenv())
+
+# all 10-mers in alphabetical order
+.sortedKmers <- function(){
+  if(is.null(.cache$kmers)){
+    nts <- c("A", "C", "G", "T")
+    kmers <- nts
+    for(i in 2:10) kmers <- paste0(rep(kmers, each=4), rep(nts, length(kmers)))
+    .cache$kmers <- kmers
+  }
+  .cache$kmers
+}
+
+# for each 10-mer (alphabetical order), the 0-based index of its reverse 
+# complement; the index is the base-4 number with A,C,G,T = 0,1,2,3, so that 
+# the reverse complement reverses the digits and complements them (d -> 3-d)
+.rcMap <- function(){
+  if(is.null(.cache$rc_map)){
+    i <- seq_len(4^10) - 1L
+    rc <- integer(length(i))
+    for(j in 1:10){
+      rc <- rc*4L + (3L - (i %% 4L))
+      i <- i %/% 4L
+    }
+    .cache$rc_map <- rc
+  }
+  .cache$rc_map
 }

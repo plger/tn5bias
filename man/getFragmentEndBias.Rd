@@ -69,6 +69,6 @@ set.seed(1)
 s <- paste(sample(c("A","C","G","T"), 1000, replace=TRUE), collapse="")
 fa <- tempfile(fileext=".fa"); writeLines(c(">chrT", s), fa)
 Rsamtools::indexFa(fa)
-fr <- GRanges("chrT", IRanges(c(100, 300), c(180, 450)))
+fr <- GenomicRanges::GRanges("chrT", IRanges::IRanges(c(100, 300), c(180, 450)))
 getFragmentEndBias(fr, Rsamtools::FaFile(fa))
 }

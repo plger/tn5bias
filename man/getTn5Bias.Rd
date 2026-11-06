@@ -18,6 +18,16 @@ A data.frame with the columns kmer and bias
 Returns a table of Tn5 bias per 10-mers, obtained from SELMA (Hu et al. 2022)
  using ATAC-seq on naked human DNA.
 }
+\details{
+Preparing this table takes a fraction of a second. The functions 
+that need it (e.g. \code{\link{getSequenceTn5Bias}}, 
+\code{\link{insertionProfiles}}, \code{\link{getRegionTn5Bias}}, 
+\code{\link{getFragmentEndBias}}) build it internally when their `bias` 
+argument is NULL. When calling such functions many times (e.g. in a loop or 
+over many samples), it is therefore faster to call `getTn5Bias()` once and 
+pass the result as their `bias` argument (`kmerBias` in 
+\code{\link{estimateBiasScale}}).
+}
 \examples{
 bias <- getTn5Bias()
 head(bias)

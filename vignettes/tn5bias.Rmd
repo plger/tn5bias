@@ -43,9 +43,11 @@ universalmotif::view_motifs(tn5biasMotif, use.type="PPM", text.size = 11) +
   scale_x_continuous(breaks=1:10, labels = c(-5:-1, 1:5)) +
   labs(x="Position relative to the cut site", y="Probability")
 ```
-The actual bias is more complicated than that, because the positions are not 
-entirely independent from each other, and both strands (with some shift) are 
-relevant. This is best illustrated in this figure from [@hu2022selma]:
+
+The actual bias is more complicated than that, first because the positions are 
+not entirely independent from each other, and second because both the staggered 
+cleavage on each strand are relevant to an insertion. This is best illustrated
+in this figure from [@hu2022selma]:
 
 ```{r echo = FALSE, fig.cap = "Dimeric Tn5 insertion induces cleavage with a shift between strands. Adapted from Hu et al., Nat Comm 2022."}
 knitr::include_graphics(system.file('extdata', 'bias_strands.png', package = 'tn5bias'))
@@ -54,7 +56,9 @@ knitr::include_graphics(system.file('extdata', 'bias_strands.png', package = 'tn
 The `tn5bias` package uses bias estimated by SELMA [@hu2022selma] for all 
 10-mers, and applies them to both strands of an input DNA sequence to estimate
 a bias for each position. Such a bias profile can then be used to correct 
-ATAC-seq profiles.
+ATAC-seq profiles. Note, however, that the magnitude of the bias varies 
+across samples, and proper correction therefore depends on sample-specific 
+scaling of the bias.
 
 Note that correcting such bias is irrelevant for many purposes (such as 
 computing differential accessibility across samples), and becomes especially 
@@ -104,12 +108,25 @@ memory by converting the OR values to log2-enrichment, multiplying by 100, and
 rounding, thus saving as integers. This can be done automatically using the 
 `asInteger=TRUE` argument.
 
-When computing bias for a genome, you can pass a `FaFile` (from the 
+When computing bias for a large genome, you can pass a `FaFile` (from the 
 `r BiocStyle::Biocpkg("Rsamtools")` package) as input, in order not to have to 
 load the entire genome in memory.
 
 Finally, the computed bias for a genome can be saved as a bigwig file directly
 by using `export.bw()` from the `r BiocStyle::Biocpkg("rtracklayer")` package.
+
+### Calling the functions repeatedly
+
+Each call of the functions that use the 10-mer bias table 
+(`getSequenceTn5Bias`, `insertionProfiles`, `getRegionTn5Bias`, ...) prepares
+the table internally. If you call them many times (e.g. in a loop over 
+sequences or samples), it is faster to prepare it once with `getTn5Bias()` and 
+pass it along:
+
+```{r, eval=FALSE}
+kmerBias <- getTn5Bias()
+res <- lapply(seqs, getSequenceTn5Bias, bias=kmerBias, verbose=FALSE)
+```
 
 ## Shifted fragments and strand
 

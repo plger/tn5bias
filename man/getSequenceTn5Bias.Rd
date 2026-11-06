@@ -21,7 +21,8 @@ object, a character vector, or a DNAString or DNAStringSet.}
 
 \item{bias}{An optional 10-mer bias table, with the columns 'kmer' and 
 'bias'. By default, an (internal) table derived from SELMA will be used 
-(see \link{getTn5Bias}).}
+(see \link{getTn5Bias}). When calling the function many times, it is 
+faster to call \code{\link{getTn5Bias}} once and pass the result here.}
 
 \item{nthreads}{The number of threads to use (default 1). Alternatively, a
 \code{BiocParallelParam} object, in which case parallelization is done

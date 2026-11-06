@@ -3,6 +3,15 @@
 #' Returns a table of Tn5 bias per 10-mers, obtained from SELMA (Hu et al. 2022)
 #'  using ATAC-seq on naked human DNA.
 #'
+#' @details Preparing this table takes a fraction of a second. The functions 
+#' that need it (e.g. \code{\link{getSequenceTn5Bias}}, 
+#' \code{\link{insertionProfiles}}, \code{\link{getRegionTn5Bias}}, 
+#' \code{\link{getFragmentEndBias}}) build it internally when their `bias` 
+#' argument is NULL. When calling such functions many times (e.g. in a loop or 
+#' over many samples), it is therefore faster to call `getTn5Bias()` once and 
+#' pass the result as their `bias` argument (`kmerBias` in 
+#' \code{\link{estimateBiasScale}}).
+#'
 #' @param convert Logical; whether to convert into an (observed/expected) odds 
 #'  ratio (default TRUE). If FALSE, the bias values as stored, i.e. rounded, 
 #'  100*log2(OR) to ease the memory footprint.
@@ -25,14 +34,16 @@ getTn5Bias <- function(convert=TRUE){
   kmers <- .getKmers()
   d <- data.frame(kmer=kmers, bias=head(tn5bias, length(kmers)))
   if(convert) d$bias <- 2^(d$bias/100)
-  d <- d[order(d$kmer), ]
+  d <- d[order(d$kmer, method="radix"), ]
   row.names(d) <- NULL
   d
 }
 
+# all 10-mers, in the order of the stored data (the first nucleotide varies 
+# fastest)
 .getKmers <- function(){
   nts <- c("A", "C", "G", "T")
-  kmers <- expand.grid(nts, nts, nts, nts, nts, nts, nts, nts, nts, nts, 
-                       KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
-  do.call(paste0, kmers)
+  kmers <- nts
+  for(i in 2:10) kmers <- paste0(rep(kmers, 4), rep(nts, each=length(kmers)))
+  kmers
 }

@@ -318,3 +318,12 @@ test_that("getFragmentEndBias returns the shifted bias at fragment ends", {
   expect_equal(rg$bias_end[3], b[en[2]], tolerance=0.01)
   expect_error(getFragmentEndBias(GRanges("chrX", IRanges(1, 10)), fa, verbose=FALSE))
 })
+
+test_that("the cached reverse-complement map is correct", {
+  km <- tn5bias:::.sortedKmers()
+  expect_equal(km, sort(km, method="radix"))
+  expect_equal(length(km), 4^10)
+  rc <- as.character(Biostrings::reverseComplement(Biostrings::DNAStringSet(km)))
+  expect_equal(tn5bias:::.rcMap(), match(rc, km) - 1L)
+  expect_identical(tn5bias:::.rcMap(), tn5bias:::.rcMap())
+})
